@@ -8,8 +8,12 @@ const Master = () => {
   const { properties, loading, error } = useSelector((state) => state.properties);
   const [selectedProperty, setSelectedProperty] = useState("");
 
-  // Retrieve selected property from localStorage on mount
   useEffect(() => {
+    dispatch(fetchProperties());
+  }, [dispatch]);
+
+  useEffect(() => {
+    // Retrieve selected property from localStorage
     const savedProperty = localStorage.getItem("selected_property_name");
     if (savedProperty) {
       setSelectedProperty(savedProperty);
@@ -17,18 +21,23 @@ const Master = () => {
   }, []);
 
   useEffect(() => {
-    dispatch(fetchProperties());
-  }, [dispatch]);
+    if (properties.length > 0) {
+      if (!selectedProperty) {
+        // Set first property by default if nothing is selected
+        const firstProperty = properties[0];
+        setSelectedProperty(firstProperty.property_name);
+        localStorage.setItem("selected_property_name", firstProperty.property_name);
+        localStorage.setItem("property_uid", firstProperty.property_uid);
+      } else {
+        // Ensure localStorage updates if selectedProperty exists in properties
+        const selectedPropertyData = properties.find(
+          (property) => property.property_name === selectedProperty
+        );
 
-  useEffect(() => {
-    if (selectedProperty) {
-      const selectedPropertyData = properties.find(
-        (property) => property.property_name === selectedProperty
-      );
-
-      if (selectedPropertyData?.property_uid) {
-        localStorage.setItem("property_uid", selectedPropertyData.property_uid);
-        localStorage.setItem("selected_property_name", selectedProperty); // Save property name as well
+        if (selectedPropertyData) {
+          localStorage.setItem("property_uid", selectedPropertyData.property_uid);
+          localStorage.setItem("selected_property_name", selectedProperty);
+        }
       }
     }
   }, [selectedProperty, properties]);
@@ -36,6 +45,15 @@ const Master = () => {
   const handlePropertyChange = (event) => {
     const selectedPropertyName = event.target.value;
     setSelectedProperty(selectedPropertyName);
+
+    const selectedPropertyData = properties.find(
+      (property) => property.property_name === selectedPropertyName
+    );
+
+    if (selectedPropertyData) {
+      localStorage.setItem("property_uid", selectedPropertyData.property_uid);
+      localStorage.setItem("selected_property_name", selectedPropertyName);
+    }
   };
 
   return (

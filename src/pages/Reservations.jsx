@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import Cookies from "js-cookie"; // Import js-cookie library
+import fontFamily from "../utils/fonts";
 import {
   Table,
   TableBody,
@@ -12,89 +11,60 @@ import {
   Button,
   TextField,
   Box,
-  TablePagination,
   Pagination,
+  CircularProgress,
+  Typography,
 } from "@mui/material";
 import HashLoader from "react-spinners/HashLoader";
+import { useDispatch, useSelector } from "react-redux";
+import colors from "../utils/colors";
+import { fetchReservations } from "../redux/Slices/Reservations/reservationSlice";
+import { fetchInvoice } from "../redux/Slices/Reservations/invoiceSlice";
+import CustomSearch from "../components/custom/CustomSearch";
 
 const Reservations = () => {
-  const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0); // Adjusted for 0-based index
-  const [rowsPerPage, setRowsPerPage] = useState(20); // Rows per page
-  const [propertyUid, setPropertyUid] = useState(localStorage.getItem("property_uid"));
-
-  const token = Cookies.get("token"); 
+  const dispatch = useDispatch();
+  const [page, setPage] = useState(1);
+  const [rowsPerPage] = useState(20);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { reservations, totalPages, loading, } = useSelector((state) => state.reservations);
+  const { loadingId, fileURL, error } = useSelector((state) => state.invoice);
+  const selectedPropertyUid = useSelector((state) => state.properties.selectedPropertyUid);
 
   // Fetch reservations data
-  const fetchReservations = async () => {
-    if (!propertyUid) {
-      console.error("No property UID found in cookies");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await axios.post(
-        `https://server.hatimiretreats.com/v1/booking/list-reservations/${propertyUid}`, 
-        {}, // Empty request body
-        {
-          params: {
-            page: page + 1, // Send 1-based page index as query parameter
-            pageSize: rowsPerPage,
-          },
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setReservations(response?.data || []);
-    } catch (error) {
-      console.error("Error fetching reservations:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // This effect will run when propertyUid is changed
   useEffect(() => {
-    if (propertyUid) {
-      fetchReservations();
+    if (selectedPropertyUid) {
+      dispatch(fetchReservations({ selectedPropertyUid, page, rowsPerPage }));
     }
-  }, [propertyUid, page, rowsPerPage]); // Watch for changes in propertyUid, page, and rowsPerPage
+  }, [selectedPropertyUid, page, rowsPerPage, dispatch]);
 
-  // Handle fetching invoice
-  const fetchInvoice = async (bookingId) => {
-    try {
-      const response = await axios.get(
-        `http://localhost:8080/v1/booking/updated-invoice/${bookingId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          responseType: "blob", // Ensure we get a binary response (PDF)
-        }
-      );
 
-      const fileURL = URL.createObjectURL(response.data);
-      const newWindow = window.open(fileURL, "_blank");
-      if (newWindow) {
-        newWindow.focus();
-      } else {
-        alert("Please allow popups to view the invoice.");
-      }
-    } catch (error) {
-      console.error("Error fetching invoice:", error);
-      alert("Failed to fetch the invoice.");
-    }
+  // Fetch invoice function
+  const handleFetchInvoice = (bookingId) => {
+    dispatch(fetchInvoice({ bookingId }));
   };
+
+  React.useEffect(() => {
+    if (fileURL) {
+      const newWindow = window.open(fileURL, "_blank");
+      if (!newWindow) alert("Please allow popups to view the invoice.");
+    }
+  }, [fileURL]);
 
   // Handle Pagination
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
+
+  const filteredData = searchTerm
+    ? reservations?.data.filter((item) => {
+      const search = searchTerm.trim().toLowerCase();
+      return (
+        item.booking_id.toString().toLowerCase().includes(search) ||
+        item.customer_info.name?.toLowerCase().includes(search)
+      );
+    })
+    : reservations.data;
 
   return (
     <div style={{ padding: "10px" }}>
@@ -108,7 +78,7 @@ const Reservations = () => {
         }}
       >
         <Box>
-          <h2>Reservations</h2>
+          <Typography variant="h5" sx={{ fontFamily }}>Reservations</Typography>
         </Box>
         <Box sx={{ display: "flex", gap: "1rem" }}>
           <TextField
@@ -121,11 +91,8 @@ const Reservations = () => {
             type="date"
             InputLabelProps={{ shrink: true }}
           />
-          <TextField
-            label="Search for guests, bookings..."
-            variant="outlined"
-            fullWidth
-          />
+          <CustomSearch label="Search for guests, bookings" onChange={(e) => setSearchTerm(e.target.value)} />
+
         </Box>
       </div>
 
@@ -143,99 +110,87 @@ const Reservations = () => {
         </Box>
       ) : (
         <>
-          <TableContainer
-            component={Paper}
-            sx={{
-              height: "calc(100vh - 160px)", // Adjusted height for pagination
-              overflow: "auto",
-            }}
-          >
+          <TableContainer component={Paper} sx={{ height: "calc(100vh - 160px)", overflow: "auto", }}>
             <Table>
-              <TableHead
-                sx={{
-                  backgroundColor: "#7cabb3",
-                  color: "#fff",
-                  position: "sticky",
-                  top: 0,
-                }}
-              >
+              <TableHead sx={{ backgroundColor: colors.green, position: "sticky", top: 0 }}>
                 <TableRow>
-                  <TableCell>
-                    <strong>Booking ID</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Room No</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Guest</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Check In</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Check Out</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Status</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Payment Status</strong>
-                  </TableCell>
-                  <TableCell>
-                    <strong>Invoice</strong>
-                  </TableCell>
+                  {["Booking ID", "Room No", "Guest", "Check In", "Check Out", "Status", "Payment Status", "Invoice"].map((text) => (
+                    <TableCell key={text} sx={{ color: "#fff", fontFamily }}>
+                      {text}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
+
               <TableBody>
-                {reservations?.data?.map((reservation) => (
-                  <TableRow key={reservation.id}>
-                    <TableCell>{reservation.booking_id}</TableCell>
-                    <TableCell>
-                      {reservation.room_info
-                        ?.map((room) => room.room_number)
-                        .join(", ")}
-                    </TableCell>
-                    <TableCell>{reservation?.customer_info.name}</TableCell>
-                    <TableCell>{reservation.check_in}</TableCell>
-                    <TableCell>{reservation.check_out}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outlined"
-                        color={
-                          reservation.booking_status === "confirmed"
-                            ? "primary"
-                            : reservation.booking_status === "blocked"
-                            ? "warning"
-                            : "error"
-                        }
-                        sx={{ position: "inherit !important" }}
+                {filteredData?.length > 0 ? (
+                  filteredData.map((reservation) => (
+                    <TableRow key={reservation.id}>
+                      <TableCell sx={{ fontFamily }}>{reservation.booking_id}</TableCell>
+                      <TableCell sx={{ fontFamily }}>
+                        {reservation.room_info?.map((room) => room.room_number).join(", ")}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily }}>
+                        {reservation?.customer_info.name}
+                      </TableCell>
+                      <TableCell sx={{ fontFamily }}>{reservation.check_in}</TableCell>
+                      <TableCell sx={{ fontFamily }}>{reservation.check_out}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          color={
+                            reservation.booking_status === "confirmed"
+                              ? "primary"
+                              : reservation.booking_status === "blocked"
+                                ? "warning"
+                                : "error"
+                          }
+                          sx={{ position: "inherit !important", textTransform: "capitalize" }}
+                        >
+                          {reservation.booking_status}
+                        </Button>
+                      </TableCell>
+                      <TableCell
+                        style={{
+                          color:
+                            reservation.payment_status === "success" ? "green" : "red",
+                          fontFamily,
+                        }}
                       >
-                        {reservation.booking_status}
-                      </Button>
-                    </TableCell>
-                    <TableCell
-                      style={{
-                        color:
-                          reservation.payment_status === "success"
-                            ? "green"
-                            : "red",
-                      }}
-                    >
-                      {reservation.payment_status}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        sx={{ position: "inherit !important" }}
-                        onClick={() => fetchInvoice(reservation._id)}
-                      >
-                        Get Invoice
-                      </Button>
+                        {reservation.payment_status}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          sx={{ position: "inherit !important", textTransform: "capitalize" }}
+                          onClick={() => handleFetchInvoice(reservation._id)}
+                          disabled={loadingId === reservation._id} // Disable only the clicked button
+                        >
+                          {loadingId === reservation._id ? (
+                            <>
+                              <CircularProgress
+                                size={20}
+                                sx={{ color: "primary.main", mr: 1 }}
+                              />
+                              Get Invoice
+                            </>
+                          ) : (
+                            "Get Invoice"
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ fontFamily, py: 3 }}>
+                      No Data Available
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
+
             </Table>
           </TableContainer>
           {/* Pagination */}
@@ -248,7 +203,7 @@ const Reservations = () => {
             }}
           >
             <Pagination
-              count={reservations.totalPages}
+              count={totalPages}
               color="primary"
               page={page}
               onChange={handleChangePage}

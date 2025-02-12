@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import Cookies from "js-cookie";
+const BaseUrl = process.env.REACT_APP_API_URL;
 
 // Async thunk to fetch properties
 export const fetchProperties = createAsyncThunk(
@@ -9,7 +10,7 @@ export const fetchProperties = createAsyncThunk(
     try {
       const token = Cookies.get("token");
       const response = await axios.get(
-        "https://server.hatimiretreats.com/v1/property/get-all-properties",
+        `${BaseUrl}/v1/property/get-all-properties`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -29,8 +30,14 @@ const propertySlice = createSlice({
     properties: [],
     loading: false,
     error: null,
+    selectedPropertyUid: localStorage.getItem("selectedPropertyUid") || "", // Retrieve from localStorage
   },
-  reducers: {},
+  reducers: {
+    setSelectedPropertyUid: (state, action) => {
+      state.selectedPropertyUid = action.payload;
+      localStorage.setItem("selectedPropertyUid", action.payload); // Persist in localStorage
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchProperties.pending, (state) => {
@@ -40,6 +47,11 @@ const propertySlice = createSlice({
       .addCase(fetchProperties.fulfilled, (state, action) => {
         state.loading = false;
         state.properties = action.payload;
+        if (!state.selectedPropertyUid && action.payload.length > 0) {
+          // Default to the first property if none is selected
+          state.selectedPropertyUid = action.payload[0].property_uid;
+          localStorage.setItem("selectedPropertyUid", action.payload[0].property_uid);
+        }
       })
       .addCase(fetchProperties.rejected, (state, action) => {
         state.loading = false;
@@ -48,4 +60,5 @@ const propertySlice = createSlice({
   },
 });
 
+export const { setSelectedPropertyUid } = propertySlice.actions;
 export default propertySlice.reducer;

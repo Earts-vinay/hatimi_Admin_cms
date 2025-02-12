@@ -31,7 +31,7 @@ import {
 import colors from '../utils/colors';
 import { useDispatch, useSelector } from "react-redux";
 import Cookies from "js-cookie";
-import { fetchProperties } from "../redux/Slices/Properties/propertySlice";
+import { fetchProperties, setSelectedPropertyUid } from "../redux/Slices/Properties/propertySlice";
 
 const drawerWidth = 220;
 
@@ -63,35 +63,39 @@ const menuItems = [
 function Sidenav({ open, toggleDrawer }) {
   const navigate = useNavigate();
   const location = useLocation();
+   const dispatch = useDispatch();
   const [masterOpen, setMasterOpen] = useState(false);
-  const dispatch = useDispatch();
   const { properties, loading, error } = useSelector((state) => state.properties);
   const [selectedProperty, setSelectedProperty] = useState("");
-
-  const handleNavigation = (path) => navigate(path);
 
   useEffect(() => {
     dispatch(fetchProperties());
   }, [dispatch]);
 
- useEffect(() => {
-    if (selectedProperty) {
-      const selectedPropertyData = properties.find(
-        (property) => property.property_name === selectedProperty
-      );
-      console.log("selectedPropertyData", selectedPropertyData);
-
-      if (selectedPropertyData?.property_uid) {
-        // Set the property_uid in localStorage
-        localStorage.setItem("property_uid", selectedPropertyData.property_uid);
-      }
+  useEffect(() => {
+    // Retrieve selected property from localStorage
+    const savedProperty = localStorage.getItem("selected_property_name");
+    if (savedProperty) {
+      setSelectedProperty(savedProperty);
     }
-  }, [selectedProperty, properties]); // Ensure properties is added to dependencies
+  }, []);
+
+
 
   const handlePropertyChange = (event) => {
     const selectedPropertyName = event.target.value;
-    setSelectedProperty(selectedPropertyName);  // Update state
+    setSelectedProperty(selectedPropertyName);
+  
+    const selectedPropertyData = properties.find(
+      (property) => property.property_name === selectedPropertyName
+    );
+  
+    if (selectedPropertyData) {
+      dispatch(setSelectedPropertyUid(selectedPropertyData.property_uid)); // Update Redux
+      localStorage.setItem("selected_property_name", selectedPropertyName);
+    }
   };
+  const handleNavigation = (path) => navigate(path);
 
   return (
     <Drawer
@@ -115,22 +119,22 @@ function Sidenav({ open, toggleDrawer }) {
       </DrawerHeader>
 
       {/* Dropdown of proerty */}
-      <FormControl fullWidth>
- 
-      <Select value={selectedProperty} onChange={handlePropertyChange} disabled={loading}>
-        {loading ? (
-          <MenuItem disabled>Loading...</MenuItem>
-        ) : error ? (
-          <MenuItem disabled>Error Loading Properties</MenuItem>
-        ) : (
-          properties.map((property) => (
-            <MenuItem key={property._id} value={property.property_name}>
-              {property.property_name}
-            </MenuItem>
-          ))
-        )}
-      </Select>
-    </FormControl>
+    <FormControl fullWidth>
+         <InputLabel>Select Property</InputLabel>
+         <Select value={selectedProperty} onChange={handlePropertyChange} disabled={loading}>
+           {loading ? (
+             <MenuItem disabled>Loading...</MenuItem>
+           ) : error ? (
+             <MenuItem disabled>Error Loading Properties</MenuItem>
+           ) : (
+             properties?.map((property) => (
+               <MenuItem key={property._id} value={property.property_name}>
+                 {property.property_name}
+               </MenuItem>
+             ))
+           )}
+         </Select>
+       </FormControl>
 
       <Box sx={{ overflow: 'auto' }}>
         <List>
