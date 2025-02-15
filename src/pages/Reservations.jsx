@@ -9,7 +9,6 @@ import {
   TableRow,
   Paper,
   Button,
-  TextField,
   Box,
   Pagination,
   CircularProgress,
@@ -21,58 +20,94 @@ import colors from "../utils/colors";
 import { fetchReservations } from "../redux/Slices/Reservations/reservationSlice";
 import { fetchInvoice } from "../redux/Slices/Reservations/invoiceSlice";
 import CustomSearch from "../components/custom/CustomSearch";
+import { DatePicker } from "antd";
+import dayjs from "dayjs";
+import CustomButton from "../components/custom/CustomButton";
 
+const { RangePicker } = DatePicker;
 const Reservations = () => {
   const dispatch = useDispatch();
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(20);
-  const [searchTerm, setSearchTerm] = useState("");
-  const { reservations, totalPages, loading, } = useSelector((state) => state.reservations);
-  const { loadingId, fileURL, error } = useSelector((state) => state.invoice);
+  const [dates, setDates] = useState(null);
+  const { reservations, totalPages, loading } = useSelector((state) => state.reservations);
+  const { loadingId, fileURL } = useSelector((state) => state.invoice);
   const selectedPropertyUid = useSelector((state) => state.properties.selectedPropertyUid);
+  const [filteredData, setFilteredData] = useState([]);
+  console.log("dates", dates);
 
-  // Fetch reservations data
   useEffect(() => {
     if (selectedPropertyUid) {
       dispatch(fetchReservations({ selectedPropertyUid, page, rowsPerPage }));
     }
   }, [selectedPropertyUid, page, rowsPerPage, dispatch]);
 
-
-  // Fetch invoice function
   const handleFetchInvoice = (bookingId) => {
     dispatch(fetchInvoice({ bookingId }));
   };
+  useEffect(() => {
+    if (reservations?.data?.length > 0) {
+      setFilteredData(reservations?.data)
+    }
+  }, [reservations.data])
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (fileURL) {
       const newWindow = window.open(fileURL, "_blank");
       if (!newWindow) alert("Please allow popups to view the invoice.");
     }
   }, [fileURL]);
 
-  // Handle Pagination
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
 
-  const filteredData = searchTerm
-    ? reservations?.data.filter((item) => {
-      const search = searchTerm.trim().toLowerCase();
-      return (
-        item.booking_id.toString().toLowerCase().includes(search) ||
-        item.customer_info.name?.toLowerCase().includes(search)
-      );
-    })
-    : reservations.data;
+  const handleDateChange = (values) => {
+
+    if (values?.length > 0) {
+      setDates(values)
+      console.log([dayjs(values[0]).format("YYYY-MM-DD"), dayjs(values[1]).format("YYYY-MM-DD")]);
+      const start = dayjs(values[0]).format("YYYY-MM-DD");
+      const end = dayjs(values[1]).format("YYYY-MM-DD");
+      console.log(start, reservations.data, end);
+      const filteredData = reservations.data.filter((booking, ind) => {
+        if ((new Date(booking.check_in) >= new Date(start)) && (new Date(booking.check_out) <= new Date(end))) {
+          return booking
+
+        }
+      })
+      console.log("fil", filteredData);
+      setFilteredData(filteredData);
+
+
+
+    } else {
+      setDates([]);
+      setFilteredData(reservations?.data)
+    }
+  };
+
+  const handleSearch = (event) => {
+    const filteredData = event.target.value
+      ? reservations?.data.filter((item) => {
+        const search = event.target.value.trim().toLowerCase();
+        return (
+          item.booking_id.toString().toLowerCase().includes(search) ||
+          item.customer_info.name?.toLowerCase().includes(search)
+        );
+      })
+      : reservations.data;
+    setFilteredData(filteredData)
+  }
 
   return (
     <div style={{ padding: "10px" }}>
-      {/* Header */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: "1rem",
           paddingX: "10px",
         }}
@@ -80,37 +115,19 @@ const Reservations = () => {
         <Box>
           <Typography variant="h5" sx={{ fontFamily }}>Reservations</Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: "1rem" }}>
-          <TextField
-            label="Start Date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="End Date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-          />
-          <CustomSearch label="Search for guests, bookings" onChange={(e) => setSearchTerm(e.target.value)} />
-
+        <Box sx={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <RangePicker value={dates} onChange={handleDateChange} format="YYYY-MM-DD" allowClear style={{ width: "100%", height: 38 }} />
+          <CustomSearch label="Search for guests, bookings" onChange={handleSearch} size='small' />
         </Box>
       </div>
 
-      {/* Table */}
       {loading ? (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "calc(100vh - 160px)",
-          }}
-        >
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100vh - 160px)" }}>
           <HashLoader color="#1D525B" />
         </Box>
       ) : (
         <>
-          <TableContainer component={Paper} sx={{ height: "calc(100vh - 160px)", overflow: "auto", }}>
+          <TableContainer component={Paper} sx={{ height: "calc(100vh - 135px)", overflow: "auto" }}>
             <Table>
               <TableHead sx={{ backgroundColor: colors.green, position: "sticky", top: 0 }}>
                 <TableRow>
@@ -130,14 +147,13 @@ const Reservations = () => {
                       <TableCell sx={{ fontFamily }}>
                         {reservation.room_info?.map((room) => room.room_number).join(", ")}
                       </TableCell>
-                      <TableCell sx={{ fontFamily }}>
-                        {reservation?.customer_info.name}
-                      </TableCell>
+                      <TableCell sx={{ fontFamily,width:"280px" }}>{reservation?.customer_info.name}</TableCell>
                       <TableCell sx={{ fontFamily }}>{reservation.check_in}</TableCell>
                       <TableCell sx={{ fontFamily }}>{reservation.check_out}</TableCell>
                       <TableCell>
                         <Button
                           variant="outlined"
+                          
                           color={
                             reservation.booking_status === "confirmed"
                               ? "primary"
@@ -145,40 +161,45 @@ const Reservations = () => {
                                 ? "warning"
                                 : "error"
                           }
-                          sx={{ position: "inherit !important", textTransform: "capitalize" }}
+                          sx={{ position: "inherit !important", textTransform: "capitalize",width:"100px" }}
                         >
                           {reservation.booking_status}
                         </Button>
+                   
+
                       </TableCell>
                       <TableCell
                         style={{
                           color:
-                            reservation.payment_status === "success" ? "green" : "red",
+                            reservation.payment_status === "success"
+                              ? "green"
+                              : reservation.payment_status === "pending"
+                                ? "orange"
+                                : "red",
                           fontFamily,
                         }}
                       >
                         {reservation.payment_status}
                       </TableCell>
+
                       <TableCell>
                         <Button
                           variant="outlined"
                           color="primary"
                           sx={{ position: "inherit !important", textTransform: "capitalize" }}
                           onClick={() => handleFetchInvoice(reservation._id)}
-                          disabled={loadingId === reservation._id} // Disable only the clicked button
+                          disabled={loadingId === reservation._id}
                         >
                           {loadingId === reservation._id ? (
                             <>
-                              <CircularProgress
-                                size={20}
-                                sx={{ color: "primary.main", mr: 1 }}
-                              />
+                              <CircularProgress size={20} sx={{ color: "primary.main", mr: 1 }} />
                               Get Invoice
                             </>
                           ) : (
                             "Get Invoice"
                           )}
                         </Button>
+                        
                       </TableCell>
                     </TableRow>
                   ))
@@ -190,24 +211,10 @@ const Reservations = () => {
                   </TableRow>
                 )}
               </TableBody>
-
             </Table>
           </TableContainer>
-          {/* Pagination */}
-          <Box
-            sx={{
-              paddingTop: "15px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Pagination
-              count={totalPages}
-              color="primary"
-              page={page}
-              onChange={handleChangePage}
-            />
+          <Box sx={{ paddingTop: "15px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Pagination count={totalPages} color="primary" page={page} onChange={handleChangePage} />
           </Box>
         </>
       )}

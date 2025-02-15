@@ -5,7 +5,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import colors from '../../utils/colors';
 import fontFamily from '../../utils/fonts';
 
-const CustomSearch = ({ searchValue, onChange,label,customSx,size,placeholder,height ="50px" }) => {
+const CustomSearch = ({ searchValue, onChange,label,customSx,size,placeholder,height="36px" }) => {
   return (
     <TextField
       fullWidth
