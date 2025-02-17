@@ -1,44 +1,52 @@
-// src/pages/Login.js
-import React, { useState } from "react";
-import { TextField, Button, Typography, Box, Alert, InputAdornment, IconButton } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { TextField, Typography, Box, Alert, InputAdornment, IconButton } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-import { Visibility, VisibilityOff } from "@mui/icons-material"; // Import icons for visibility toggle
+import { Visibility, VisibilityOff } from "@mui/icons-material"; 
 import axios from "axios";
-import { Link } from "react-router-dom"; // Import Link for navigation
-import loginImage from "../assets/login.jpg"; // Add the correct path to your login image
+import { Link } from "react-router-dom"; 
+import { Button } from "antd"; // Import Ant Design button
+ 
+import colors from '../utils/colors'
+import fontFamily from "../utils/fonts";
+import CustomTextField from "../components/custom/CustomTextField";
 
 function Login() {
-  const [mobile, setMobile] = useState(""); // Changed email to mobile
+  const [mobile, setMobile] = useState(""); 
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const [errorMessage, setErrorMessage] = useState(""); // For error messages
+  const [showPassword, setShowPassword] = useState(false); 
+  const [errorMessage, setErrorMessage] = useState(""); 
+  const [loading, setLoading] = useState(false); // Loading state
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    const token = Cookies.get("token");
+    if (!token) {
+      navigate("/");
+    }
+  }, [navigate]);
 
+  const handleLogin = async () => {
+    setLoading(true); // Start loading
     try {
       const response = await axios.post("https://server.hatimiretreats.com/v1/employee/login", {
-        mobile_no: mobile, // Use mobile number in payload
-        password: password, // Use password value in payload
+        mobile_no: mobile, 
+        password: password, 
       });
-      console.log("login", response.data);
 
       if (response.data.accesstoken) {
         Cookies.set("token", response.data.accesstoken, { expires: 1 / 6 });
-        console.log("accesstoken",response);
         navigate("/reservations");
       } else {
         setErrorMessage("Invalid credentials, please try again.");
       }
     } catch (error) {
-      console.error("Login error:", error);
       setErrorMessage("An error occurred during login. Please try again.");
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
- 
   const handleClickShowPassword = () => setShowPassword(!showPassword); 
 
   return (
@@ -51,25 +59,12 @@ function Login() {
         height: "100vh",
       }}
     >
-      {/* Main Box for the two-column layout */}
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: { sm: "column", md: "row", lg: "row", xs: "column" }, // Flex direction based on screen size
-          width: { sm: "90vw", md: "60vw", lg: "60vw", xs: "90vw" },
-          height: { sm: "90vh", md: "60vh", lg: "60vh", xs: "90vh" },
-          backgroundColor: "white",
-          padding: "10px",
-          borderRadius: "10px", 
-          gap: "10px", 
-        }}
-      >
         {/* Left side with image */}
-        <Box>
+        <Box sx={{width:"50%",height:"100%",backgroundColor:colors.green,display:"flex",justifyContent:"center",alignItems:"center"}}>
           <img
-            src={loginImage}
+            src='/assets/icons/hatimigold.svg'
             alt="Login"
-            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }}
+            style={{ width: "160px", height: "200px", objectFit: "cover"}}
           />
         </Box>
 
@@ -80,7 +75,7 @@ function Login() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: "#fff", 
+          
             padding: 4,
           }}
         >
@@ -92,19 +87,12 @@ function Login() {
               maxWidth: 400,
             }}
           >
-            <Typography component="h1" variant="h5">
-              Sign In
-            </Typography>
-            <Box component="form" noValidate onSubmit={handleLogin} sx={{ mt: 1 }}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                label="Mobile Number" // Updated label to Mobile Number
-                type="number"
-                value={mobile}
-                onChange={(e) => setMobile(e.target.value)} // Update mobile number state
-              />
+            <Typography sx={{ fontFamily,fontSize:"28px",mb:1 }} variant="h5">Welcome to Hatimi Retreats</Typography>
+            <Typography sx={{ fontFamily,color:"text.secondary" }}>Login into your Account</Typography>
+            
+            <Box component="form" noValidate sx={{ mt: 1 }}>
+              <CustomTextField  label="Mobile Number" value={mobile} onChange={(e) => setMobile(e.target.value)}/>
+             
               <TextField
                 margin="normal"
                 required
@@ -114,6 +102,7 @@ function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 InputProps={{
+                  style: {fontFamily, height: '50px',},
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
@@ -121,7 +110,7 @@ function Login() {
                         onClick={handleClickShowPassword}
                         edge="end"
                       >
-                        {showPassword ? <VisibilityOff /> : <Visibility />} {/* Toggle icon */}
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -129,30 +118,36 @@ function Login() {
               />
            
               {errorMessage && (
-                <Alert severity="error" sx={{ mb: 0 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>
                   {errorMessage}
                 </Alert>
               )}
+
+              {/* Ant Design Loading Button */}
               <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                sx={{ mt: 3, mb: 2 }}
+                block
+                type="primary"
+                loading={loading}
+                disabled={loading} 
+                onClick={handleLogin} 
+                style={{
+                  marginTop:"10px",
+                  height:"45px"
+                }}
               >
-                Login
+               Login
               </Button>
 
-              <Typography variant="body2" align="center">
-                Don't have an account?{" "}
+              <Typography variant="body2" align="center" sx={{ fontFamily, mt: 2 }}>
                 <Link to="/" style={{ textDecoration: "none", color: "#1976d2" }}>
-                  Sign Up
+                 Forget Password?
                 </Link>
               </Typography>
             </Box>
           </Box>
         </Box>
       </Box>
-    </Box>
+ 
   );
 }
 

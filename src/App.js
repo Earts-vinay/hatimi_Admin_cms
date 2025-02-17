@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
-
 import FrontDesk from "./pages/FrontDesk";
 import Reservations from "./pages/Reservations";
 import Properties from "./pages/Properties";
 import Coupons from "./pages/Coupons";
 import Master from "./pages/Master";
 import Login from "./pages/Login";
-
 import Sidenav from "./components/Sidenav";
-import HeaderLayout from "./components/HeaderLayout";
+import AddProperty from "./components/properties_screens/AddProperty";
 
 function App() {
   return (
@@ -20,9 +18,9 @@ function App() {
 }
 
 function Layout() {
-  const [open, setOpen] = useState(true); // State for toggling the sidebar
+  const [open, setOpen] = useState(true); 
   const location = useLocation();
-  const isLoginPage = location.pathname === "/"; // Check if the current path is the login page
+  const isLoginPage = location.pathname === "/"; 
 
   const toggleDrawer = () => {
     setOpen((prev) => !prev); // Toggle the sidebar state
@@ -47,6 +45,7 @@ function Layout() {
           <Route path="/frontdesk" element={<FrontDesk />} />
           <Route path="/reservations" element={<Reservations />} />
           <Route path="/properties" element={<Properties />} />
+          <Route path="/addproperty" element={<AddProperty />} />
           <Route path="/coupons" element={<Coupons />} />
           <Route path="/master" element={<Master />} />
         </Routes>

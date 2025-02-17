@@ -14,14 +14,20 @@ import fontFamily from "../utils/fonts";
 import HashLoader from "react-spinners/HashLoader";
 import CustomButton from "../components/custom/CustomButton";
 import colors from "../utils/colors";
+import { useNavigate } from "react-router-dom";
 
 const Properties = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { properties, loading, error } = useSelector((state) => state.properties);
 
   useEffect(() => {
     dispatch(fetchProperties());
   }, [dispatch]);
+
+  const handlenav = () => {
+    navigate("/addproperty");
+  };
 
   if (loading) {
     return (
@@ -51,7 +57,7 @@ const Properties = () => {
         <Typography variant="h5" sx={{ fontFamily }}>
           My Properties
         </Typography>
-        <CustomButton width="120px">Add Property</CustomButton>
+        <CustomButton width="120px" onClick={handlenav}>Add Property</CustomButton>
       </Box>
 
       {/* Scrollable Card Container */}

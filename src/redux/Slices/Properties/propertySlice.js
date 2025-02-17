@@ -48,7 +48,6 @@ const propertySlice = createSlice({
         state.loading = false;
         state.properties = action.payload;
         if (!state.selectedPropertyUid && action.payload.length > 0) {
-          // Default to the first property if none is selected
           state.selectedPropertyUid = action.payload[0].property_uid;
           localStorage.setItem("selectedPropertyUid", action.payload[0].property_uid);
         }
